@@ -1,0 +1,9 @@
+__pycache__/
+.vscode/
+
+.DS_Store
+example_code/InfluxUploader.ini
+example_code/mqtt_credentials.py
+example_code/influx_creds.py
+*.tsv
+test*.png
