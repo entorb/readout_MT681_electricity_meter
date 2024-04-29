@@ -24,7 +24,7 @@ TZ_UTC = dt.timezone.utc
 TZ_DE = ZoneInfo("Europe/Berlin")
 
 # Create an MQTT client instance
-mqtt_client = mqtt.Client("raspi3-client-1")
+mqtt_client = mqtt.Client("raspi3-client-1")  # type: ignore
 mqtt_client.username_pw_set(username, password)
 
 # Create InfluxDB client instance
