@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.9
-# ruff: noqa: ANN101
+# ruff: noqa: ANN101 D203
 
 """
 InfluxDB Uploader.
