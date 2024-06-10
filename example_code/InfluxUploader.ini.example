@@ -1,6 +1,6 @@
 [Connection]
 host = localhost
 port = 8086
-username = uwrite
+username = ro_user
 password = ***
 database = raspi
