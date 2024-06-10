@@ -8,17 +8,12 @@ upload data into InfluxDB
 read credentials from .ini file
 """
 
-
-# install via
-# pip3 install influxdb-client
-
 from configparser import ConfigParser
 
-from influxdb import InfluxDBClient
+from influxdb import InfluxDBClient  # pip3 install influxdb-client
 
 
 class InfluxUploader:
-
     """InfluxUploader Class."""
 
     def __init__(self, *, verbose: bool = False) -> None:  # noqa: D107
