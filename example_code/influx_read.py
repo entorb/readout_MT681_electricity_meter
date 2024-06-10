@@ -111,6 +111,27 @@ df_pv = read_data_from_db_or_file(filename, query)
 
 client.close()
 
+# consumption per day
+df = df_meter.reset_index()
+df = (
+    df[["time", "kWh_total_in", "kWh_total_out"]]
+    .groupby([pd.Grouper(key="time", freq="D")])
+    .agg({"kWh_total_in": "first", "kWh_total_out": "first"})
+)
+# delta
+df["kWh_in"] = df["kWh_total_in"].shift(-1) - df["kWh_total_in"]
+df["kWh_out"] = df["kWh_total_out"].shift(-1) - df["kWh_total_out"]
+df_kwh_day = df[["kWh_in", "kWh_out"]]
+
+df = df_pv.reset_index()
+df = (
+    df[["time", "kWh_total"]]
+    .groupby([pd.Grouper(key="time", freq="D")])
+    .agg({"kWh_total": "first"})
+)
+df["kWh_pv"] = df["kWh_total"].shift(-1) - df["kWh_total"]
+
+df_kwh_day = pd.concat([df_kwh_day, df[["kWh_pv"]]], axis=1)
 
 # df_meter
 # in 15s freq
@@ -181,7 +202,8 @@ df["Delta_kWh_total"] = (df["kWh_total"] - df["kWh_total"].shift(1)) / df["Delta
 
 # calc watt from deltas, used later for filling gaps
 df["watt_calc"] = df["Delta_kWh_total"] * 1000 * 60
-# moving average over 5min to prevent steps of 60W whenever the kWh increases by 0.001 (min accuracy)
+# moving average over 5min
+# to prevent steps of 60W whenever the kWh increases by 0.001 (min accuracy)
 df["watt_calc"] = df["watt_calc"].rolling(5).mean()
 
 
@@ -235,22 +257,32 @@ df["saving"] = df[["sum", "pv"]].min(axis=1)
 
 # convert Watt * min -> kWh
 
-df["saving_kWh"] = df["saving"] / 60 / 1000
+df["kWh_saved"] = df["saving"] / 60 / 1000
 
 # Convert 1min freq to daily sum
-df_day = df.reset_index()
-df_day = (
-    df_day[["time", "saving_kWh"]]
+df = df.reset_index()
+df = (
+    df[["time", "kWh_saved"]]
     .groupby([pd.Grouper(key="time", freq="D")])
-    .agg({"saving_kWh": "sum"})
+    .agg({"kWh_saved": "sum"})
+    .round(1)
 )
 
+df = pd.concat([df_kwh_day, df], axis=1)
 
 # df[["meter", "pv", "sum", "saving"]].plot()
 # df[["saving", "pv", "meter"]].plot()
-df_day[["saving_kWh"]].plot()
-plt.savefig(fname="test.png", format="png")
+plt.grid(axis="both")
+df.plot()
+# layout
+plt.suptitle("Comparing kWh consumption, production and PV-savings")
+plt.xlabel("")
+plt.ylabel("kWh")
 
+plt.grid(axis="both")
+plt.tight_layout()
+plt.savefig(fname="test.png", format="png")
+plt.close()
 
 df.to_csv(
     "test.tsv",
@@ -258,6 +290,3 @@ df.to_csv(
     lineterminator="\n",
     index=True,
 )
-
-
-exit()
