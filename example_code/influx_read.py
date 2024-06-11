@@ -75,7 +75,7 @@ def read_data_from_db_or_file(
         # .dt.tz_localize("utc")
         .dt.tz_convert(tz="Europe/Berlin")
         # drop timezone info, since Excel can not handle it
-        .dt.tz_localize(None)
+        # .dt.tz_localize(None)
     )
 
     df = df.set_index(["time"])
@@ -134,7 +134,7 @@ df["kWh_pv"] = df["kWh_total"].shift(-1) - df["kWh_total"]
 df_kwh_day = pd.concat([df_kwh_day, df[["kWh_pv"]]], axis=1)
 
 # df_meter
-# in 15s freq
+# in 10s freq
 # columns: 'kWh_total_in', 'kWh_total_out', 'watt'
 # can have missing rows
 
@@ -151,9 +151,7 @@ df_kwh_day = pd.concat([df_kwh_day, df[["kWh_pv"]]], axis=1)
 df = df_meter.reset_index()
 
 # calc deltas to previous rows
-df["Delta_time"] = (
-    df["time"] - df["time"].shift(1)
-).dt.total_seconds() / 60  # min-> sec
+df["Delta_time"] = (df["time"] - df["time"].shift(1)).dt.total_seconds()  # in sec
 df["Delta_kWh_total_in"] = (df["kWh_total_in"] - df["kWh_total_in"].shift(1)) / df[
     "Delta_time"
 ]
@@ -161,9 +159,9 @@ df["Delta_kWh_total_out"] = (df["kWh_total_out"] - df["kWh_total_out"].shift(1))
     "Delta_time"
 ]
 # calc watt from deltas, used later for filling gaps
-df["watt_calc"] = (df["Delta_kWh_total_in"] - df["Delta_kWh_total_out"]) * 1000 * 60
+df["watt_calc"] = (df["Delta_kWh_total_in"] - df["Delta_kWh_total_out"]) * 1000 * 3600
 
-# Convert from 15s freq to 1min freq, using mean
+# Convert from 10s freq to 1min freq and add missing times, using mean
 df = (
     df[["time", "watt", "watt_calc"]]
     .groupby([pd.Grouper(key="time", freq="1min")])
@@ -171,7 +169,7 @@ df = (
 )
 
 # print where it is NaN
-print(df[df["watt"].isna()])
+# print(df[df["watt"].isna()])
 
 # fill in gaps by backwards filling (bfill)
 df["watt_calc"] = df["watt_calc"].bfill()
@@ -195,16 +193,14 @@ df_meter = df
 # df_pv calc delta
 df = df_pv.reset_index()
 # calc deltas to previous rows
-df["Delta_time"] = (
-    df["time"] - df["time"].shift(1)
-).dt.total_seconds() / 60  # min-> sec
+df["Delta_time"] = (df["time"] - df["time"].shift(1)).dt.total_seconds()  # in sec
 df["Delta_kWh_total"] = (df["kWh_total"] - df["kWh_total"].shift(1)) / df["Delta_time"]
 
 # calc watt from deltas, used later for filling gaps
-df["watt_calc"] = df["Delta_kWh_total"] * 1000 * 60
-# moving average over 5min
+df["watt_calc"] = df["Delta_kWh_total"] * 1000 * 3600
+# moving average over 9min
 # to prevent steps of 60W whenever the kWh increases by 0.001 (min accuracy)
-df["watt_calc"] = df["watt_calc"].rolling(5).mean()
+df["watt_calc"] = df["watt_calc"].rolling(window=9, min_periods=1).mean()
 
 
 # add missing times
@@ -241,10 +237,9 @@ df = pd.concat(
 
 df["sum"] = df["meter"] + df["pv"]
 
-# df["sum"] = df["sum"].rolling(4).mean()
+# df["sum"] = df["sum"].rolling(window=9, min_periods=1).mean()
 
-# df["pv"] = df["pv"].rolling(4).mean()
-
+# df["pv"] = df["pv"].rolling(window=9, min_periods=1).mean()
 
 # sum = 0 if < 0
 df["sum"] = df["sum"].clip(lower=0)
@@ -255,7 +250,7 @@ print(df["meter+"].sum() / 1000 / 60)
 
 df["saving"] = df[["sum", "pv"]].min(axis=1)
 
-# convert Watt * min -> kWh
+# convert Watt * min -> kWh per min
 
 df["kWh_saved"] = df["saving"] / 60 / 1000
 
