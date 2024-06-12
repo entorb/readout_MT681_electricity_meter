@@ -12,7 +12,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from influx_creds import credentials_read as creds
-from influx_helper import connect
+from influx_helper import (
+    connect,
+    df_interpolate_missing_meter_data,
+    df_interpolate_missing_pv_data,
+    fetch_data_to_pd,
+    time_to_datetime,
+)
 
 TZ_DE = ZoneInfo("Europe/Berlin")
 
@@ -28,14 +34,6 @@ def check_cache_file_available_and_recent(
     return cache_good
 
 
-def fetch_data_to_pd(query: str) -> pd.DataFrame:
-    """Fetch data from DB into to Pandas DataFrame."""
-    result = client.query(query)
-    data = result.get_points()  # type: ignore
-    df = pd.DataFrame(data)
-    return df
-
-
 def read_data_from_db_or_file(
     filename: str,
     query: str,
@@ -45,7 +43,7 @@ def read_data_from_db_or_file(
         print("Using cache file " + filename)
         df = pd.read_csv(filename, sep="\t", lineterminator="\n")
     else:
-        df = fetch_data_to_pd(query)
+        df = fetch_data_to_pd(client, query)
         df.to_csv(
             filename,
             sep="\t",
@@ -55,20 +53,7 @@ def read_data_from_db_or_file(
     if "room" in df.columns:  # Shelly data
         df = df.drop(columns=["room"])
 
-    df["time"] = pd.to_datetime(df["time"])
-
-    # convert UTC to local time
-    df["time"] = (
-        df["time"]
-        # .dt.tz_localize("utc")
-        .dt.tz_convert(tz="Europe/Berlin")
-        # drop timezone info, since Excel can not handle it
-        # .dt.tz_localize(None)
-    )
-
-    df = df.set_index(["time"])
-    # df.index = pd.to_datetime(df.index)
-    # print(df)
+    df = time_to_datetime(df)
     return df
 
 
@@ -121,95 +106,28 @@ df["kWh_pv"] = df["kWh_total"].shift(-1) - df["kWh_total"]
 
 df_kwh_day = pd.concat([df_kwh_day, df[["kWh_pv"]]], axis=1)
 
-# df_meter
-# in 10s freq
-# columns: 'kWh_total_in', 'kWh_total_out', 'watt'
-# can have missing rows
-
 # kWh increase
 # min = df_meter["kWh_total_in"].min()
 # max = df_meter["kWh_total_in"].max()
 # print(max - min)
 
+# df_meter
+# in 10s freq
+# columns: 'kWh_total_in', 'kWh_total_out', 'watt'
+# can have missing rows
+
+df_meter = df_interpolate_missing_meter_data(df_meter).rename(columns={"watt": "meter"})
+
+# in 1min freq
+# columns: 'meter' (Watt), kWh_total_in, kWh_total_out
+# no missing rows
+
 # df_pv
 # in 1min freq
 # columns: 'kWh_total', 'watt_last' (average of last minute), 'watt_now'
 
-# df_meter : filling of gaps
-df = df_meter.reset_index()
 
-# calc deltas to previous rows
-df["Delta_time"] = (df["time"] - df["time"].shift(1)).dt.total_seconds()  # in sec
-df["Delta_kWh_total_in"] = (df["kWh_total_in"] - df["kWh_total_in"].shift(1)) / df[
-    "Delta_time"
-]
-df["Delta_kWh_total_out"] = (df["kWh_total_out"] - df["kWh_total_out"].shift(1)) / df[
-    "Delta_time"
-]
-# calc watt from deltas, used later for filling gaps
-df["watt_calc"] = (df["Delta_kWh_total_in"] - df["Delta_kWh_total_out"]) * 1000 * 3600
-
-# Convert from 10s freq to 1min freq and add missing times, using mean
-df = (
-    df[["time", "watt", "watt_calc"]]
-    .groupby([pd.Grouper(key="time", freq="1min")])
-    .agg({"watt": "mean", "watt_calc": "mean"})
-)
-
-# print where it is NaN
-# print(df[df["watt"].isna()])
-
-# fill in gaps by backwards filling (bfill)
-df["watt_calc"] = df["watt_calc"].bfill()
-
-# overwrite df["watt"] with df["watt_calc"] where df["watt"].isna()
-df["watt"] = df["watt"].fillna(df["watt_calc"])
-
-df = df.drop(columns=["watt_calc"])
-
-df = df.rename(columns={"watt": "meter"})
-
-df_meter = df
-# in 1min freq
-# columns: 'meter' (Watt)
-# no missing rows
-
-
-#
-# PV
-#
-# df_pv calc delta
-df = df_pv.reset_index()
-# calc deltas to previous rows
-df["Delta_time"] = (df["time"] - df["time"].shift(1)).dt.total_seconds()  # in sec
-df["Delta_kWh_total"] = (df["kWh_total"] - df["kWh_total"].shift(1)) / df["Delta_time"]
-
-# calc watt from deltas, used later for filling gaps
-df["watt_calc"] = df["Delta_kWh_total"] * 1000 * 3600
-# moving average over 9min
-# to prevent steps of 60W whenever the kWh increases by 0.001 (min accuracy)
-df["watt_calc"] = df["watt_calc"].rolling(window=9, min_periods=1).mean()
-
-
-# add missing times
-df = (
-    df[["time", "watt_last", "watt_calc"]]
-    .groupby([pd.Grouper(key="time", freq="1min")])
-    .agg({"watt_last": "mean", "watt_calc": "mean"})
-)
-
-# fill in gaps by backwards filling (bfill)
-df["watt_calc"] = df["watt_calc"].bfill()
-
-# overwrite df["watt"] with df["watt_calc"] where df["watt"].isna()
-df["watt_last"] = df["watt_last"].fillna(df["watt_calc"])
-
-
-df = df.drop(columns=["watt_calc"])
-
-df = df.rename(columns={"watt_last": "pv"})
-
-df_pv = df
+df_pv = df_interpolate_missing_pv_data(df_pv).rename(columns={"watt_last": "pv"})
 # in 1min freq
 # columns: 'pv' (Watt)
 # no missing rows
