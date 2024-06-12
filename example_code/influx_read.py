@@ -10,23 +10,11 @@ from zoneinfo import ZoneInfo
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from influxdb import InfluxDBClient
 
-from influx_read_creds import credentials as creds
+from influx_creds import credentials_read as creds
+from influx_helper import connect
 
 TZ_DE = ZoneInfo("Europe/Berlin")
-
-
-def connect() -> InfluxDBClient:
-    """Connect to DB."""
-    client = InfluxDBClient(
-        host=creds["host"],
-        port=creds["port"],
-        username=creds["user"],
-        password=creds["password"],
-    )
-    client.switch_database(creds["database"])
-    return client
 
 
 def check_cache_file_available_and_recent(
@@ -84,7 +72,7 @@ def read_data_from_db_or_file(
     return df
 
 
-client = connect()
+client = connect(creds)
 
 # MT681 meter data
 filename = "data-meter.tsv"
