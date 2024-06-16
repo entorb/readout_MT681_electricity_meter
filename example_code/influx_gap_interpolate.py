@@ -17,13 +17,13 @@ client = connect(credentials_read)
 # MT681 meter data
 query = """
 SELECT * FROM "tasmota_MT681"
-WHERE time > now() - 1h
+WHERE time > now() - 1d
 """
 df_meter = time_to_datetime(fetch_data_to_pd(client, query))
 
 # # Shelly PV data
 # query = """
-# SELECT * FROM "Shelly3"
+# SELECT * FROM "Shelly"
 # WHERE room='Balkon'
 # AND time > now() - 1d
 # """
