@@ -73,7 +73,7 @@ df_meter = read_data_from_db_or_file(filename, query)
 # Shelly PV data
 filename = "data-pv.tsv"
 query = """
-SELECT * FROM "Shelly3"
+SELECT * FROM "Shelly"
 WHERE room='Balkon'
 AND time > '2024-06-01'
 AND time > now() - 30d
