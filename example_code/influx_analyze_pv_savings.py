@@ -90,8 +90,11 @@ df = (
     df[["time", "kWh_total_in", "kWh_total_out"]]
     .groupby([pd.Grouper(key="time", freq="D")])
     .agg({"kWh_total_in": "first", "kWh_total_out": "first"})
+    # first, because start of day for delta below
 )
+
 # delta
+# shift(-1) shifts the values one row up -> tomorrow to today
 df["kWh_in"] = df["kWh_total_in"].shift(-1) - df["kWh_total_in"]
 df["kWh_out"] = df["kWh_total_out"].shift(-1) - df["kWh_total_out"]
 df_kwh_day = df[["kWh_in", "kWh_out"]]
@@ -104,7 +107,7 @@ df = (
 )
 df["kWh_pv"] = df["kWh_total"].shift(-1) - df["kWh_total"]
 
-df_kwh_day = pd.concat([df_kwh_day, df[["kWh_pv"]]], axis=1)
+df_kwh_day = pd.concat([df_kwh_day, df[["kWh_pv"]]], axis=1).round(3)
 
 # kWh increase
 # min = df_meter["kWh_total_in"].min()
@@ -160,6 +163,18 @@ df["saving"] = df[["sum", "pv"]].min(axis=1)
 
 df["kWh_saved"] = df["saving"] / 60 / 1000
 
+
+# df[["meter", "pv", "sum", "saving"]].to_csv(
+#     "test1.tsv",
+#     sep="\t",
+#     lineterminator="\n",
+#     index=True,
+# )
+# df[["meter", "pv", "sum", "saving"]].plot()
+# plt.tight_layout()
+# plt.savefig(fname="test1.png", format="png")
+# plt.close()
+
 # Convert 1min freq to daily sum
 df = df.reset_index()
 df = (
@@ -170,6 +185,9 @@ df = (
 )
 
 df = pd.concat([df_kwh_day, df], axis=1)
+
+# drop last (incomplete) day
+df = df[:-1]
 
 # df[["meter", "pv", "sum", "saving"]].plot()
 # df[["saving", "pv", "meter"]].plot()
