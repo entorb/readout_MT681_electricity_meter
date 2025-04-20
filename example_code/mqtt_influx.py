@@ -17,10 +17,11 @@ from zoneinfo import ZoneInfo
 
 # pip install paho-mqtt
 import paho.mqtt.client as mqtt
+
 from InfluxUploader import InfluxUploader
 from mqtt_credentials import hostname, password, port, username
 
-TZ_UTC = dt.timezone.utc
+TZ_UTC = dt.UTC
 TZ_DE = ZoneInfo("Europe/Berlin")
 
 # Create an MQTT client instance
