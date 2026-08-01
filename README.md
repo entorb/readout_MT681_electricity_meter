@@ -65,7 +65,7 @@ in webinterface open console to read and change the timezone
 
 ### In device webinterface
 
-[Here](https://ottelo.jimdofree.com/stromz%C3%A4hler-auslesen-tasmota/) is described, how to upload a Tasmota firmware and script, that provides data visualization on the webinterface of the device. I did not try that.
+[Here at ottelo](https://ottelo.jimdofree.com/stromz%C3%A4hler-auslesen-tasmota/) is described, how to upload a Tasmota firmware and script, that provides data visualization on the webinterface of the device. I did not try that.
 
 ![Tasmota](images/tasmota.png "Tasmota")
 
