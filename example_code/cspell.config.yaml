@@ -3,16 +3,16 @@ version: '0.2'
 useCache: true
 useGitignore: true
 dictionaryDefinitions:
-- name: cspell-words
-  path: cspell-words.txt
-  addWords: true
+  - name: cspell-words
+    path: cspell-words.txt
+    addWords: true
 dictionaries:
-- cspell-words
+  - cspell-words
 language: en-US
 ignorePaths:
-- '/.vscode/'
-- 'cspell-words.txt'
-- 'cspell.config.yaml'
-- '/LICENSE'
-- '.*'
-- 'requirements.txt'
+  - '/.vscode/'
+  - 'cspell-words.txt'
+  - 'cspell.config.yaml'
+  - '/LICENSE'
+  - '.*'
+  - 'requirements.txt'
