@@ -1,8 +1,0 @@
-Balkon
-bfill
-creds
-fillna
-isna
-suptitle
-xlabel
-ylabel
