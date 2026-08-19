@@ -21,6 +21,7 @@ prek
 raspi
 rgba
 rumdl
+shfmt
 Stromzähler
 suptitle
 tasmota
