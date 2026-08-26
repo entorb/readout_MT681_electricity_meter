@@ -11,5 +11,5 @@ dictionaries:
   - cspell-words
 language: en-US
 ignorePaths:
-  - '/.vscode/'
-  - '/LICENSE'
+  - /.vscode/
+  - /LICENSE
