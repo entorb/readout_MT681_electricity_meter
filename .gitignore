@@ -1,0 +1,13 @@
+*.tsv
+.DS_Store
+.vscode/
+/.pytest_cache/
+/.ruff_cache/
+/.rumdl_cache/
+/.venv/
+__pycache__/
+cspell-words-missing.txt
+example_code/influx_creds.py
+example_code/InfluxUploader.ini
+example_code/mqtt_credentials.py
+test*.png
